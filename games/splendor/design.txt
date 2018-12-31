@@ -1,0 +1,40 @@
+enum Gem
+    RED, GREEN, BLUE, BLACK, WHITE, GOLD
+
+enum Tier
+    ONE, TWO, THREE
+
+enum TurnOption
+     PURCHASE_CARD, TAKE_GEMS, RESERVE_CARD
+
+enum CardLocation
+     TIER_1, TIER_2, TIER_3, RESERVED
+
+class Card
+    Gem            bonus
+    dict<Gem, int> cost
+    Tier           tier
+
+class Noble
+    int            victory_points
+    dict<Gem, int> cost
+
+class Player
+    Card[] faceup
+    Card[] reserve
+    Gem[]  gems
+
+    TurnOption take_turn()
+    pair<PurchaseLocation, int> purchase_card()
+    Gem[] take_gems()
+    pair<CardLocation, int> reserve_card()
+    
+
+class Game
+    Player[] players
+    Card[]   tier1_deck
+    Card[]   tier2_deck
+    Card[]   tier3_deck
+    Gem[]    available_gems
+    
+    
