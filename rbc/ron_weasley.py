@@ -41,6 +41,15 @@ class RonWeasley(Player):
 
         #'''
 
+        # define values to rank potential captures
+        self.capture_value = {}
+        self.capture_value[chess.KING]   = 9999
+        self.capture_value[chess.QUEEN]  = 9
+        self.capture_value[chess.ROOK]   = 7
+        self.capture_value[chess.BISHOP] = 3
+        self.capture_value[chess.KNIGHT] = 3
+        self.capture_value[chess.PAWN]   = 1
+
         logging.basicConfig(filename='ron_weasley.log', format='%(levelname)-10s%(message)s', level=logging.INFO)
         logging.info("Let's play chess!")
 
@@ -79,6 +88,13 @@ class RonWeasley(Player):
         else:
             logging.info('I am Ron Weasley, playing as BLACK\n')
 
+        logging.info('Starting board:\n{}\n'.format(self.board))
+
+        self.log_freshness_array()
+
+        # create all the possible sense grids and store them for quick access
+        self.store_sense_grids()
+
         '''
         #self.board.set_piece_at(24, chess.Piece(chess.KNIGHT, chess.WHITE))
         #print('{}\n'.format(self.board))
@@ -97,7 +113,7 @@ class RonWeasley(Player):
         '''
         '''
 
-        logging.info('Handling opponent move result')
+        #logging.info('Handling opponent move result')
 
         '''
         # trout bot
@@ -111,27 +127,25 @@ class RonWeasley(Player):
 
 
         #'''
-        self.print_current_player()
+        #self.print_current_player()
 
         # if the opponent captured our piece, remove it from our board.
         self.my_piece_captured_square = capture_square
         if captured_my_piece:
+            logging.info('My piece was captured! {} at {}'.format(self.board.piece_at(capture_square), capture_square)) 
             self.board.remove_piece_at(capture_square)
+            logging.info('Updated board:\n{}\n'.format(self.board))
         #'''
 
 
     def choose_sense(self, sense_actions: List[Square], move_actions: List[chess.Move], seconds_left: float) -> \
             Optional[Square]:
 
-        logging.info('Choosing sense')
-        self.print_current_player()
+        #logging.info('Choosing sense')
+        #self.print_current_player()
 
-        sense_choice = random.choice(sense_actions)
-        logging.info('Sense choice: {}'.format(sense_choice))
-        return sense_choice
-
-        #'''
-        # trout botRandomBot-RonWeasley-white-2019_10_09-04_13_58.json
+        '''
+        # trout bot
 
         # if our piece was just captured, sense where it was captured
         if self.my_piece_captured_square:
@@ -141,7 +155,7 @@ class RonWeasley(Player):
 
         self.sense_choice = random.choice(sense_actions)
         logging.info('Sense choice: {}'.format(sense_choice))
-        #'''
+        '''
 
         # parse potential opponent moves for information
         self.start_points = []
@@ -206,8 +220,10 @@ class RonWeasley(Player):
         logging.info('Sense choice: {}'.format(self.sense_choice))
 
         end_time = time.time()
-        logging.info('Intermediate time (scoring squares): {}'.format(mid_time2 - mid_time1))
-        logging.info('Sense time taken: {}'.format(end_time - start_time))
+        #logging.info('Intermediate time (scoring squares): {}'.format(mid_time2 - mid_time1))
+        #logging.info('Sense time taken: {}'.format(end_time - start_time))
+
+        #logging.info('')
 
         return self.sense_choice
 
@@ -220,12 +236,24 @@ class RonWeasley(Player):
         :type sense_result: array of chess.Square
         '''
 
-        logging.info('Handling sense result')
-        self.print_current_player()
+        #logging.info('Handling sense result')
+        #self.print_current_player()
 
         new_board = self.board.copy()
 
-        logging.info('Sense result: {}'.format(sense_result))
+        sense_result = sorted(sense_result, key=lambda score: score[0])
+        printable_sense_result = []
+        for x in sense_result:
+            if x[1] is None:
+                printable_sense_result.append('_')
+            else:
+                printable_sense_result.append(x[1].symbol())
+
+        str = 'Sense result:\n'
+        str += '{:<2s}{:<2s}{:<2s}\n'.format(printable_sense_result[6], printable_sense_result[7], printable_sense_result[8])
+        str += '{:<2s}{:<2s}{:<2s}\n'.format(printable_sense_result[3], printable_sense_result[4], printable_sense_result[5])
+        str += '{:<2s}{:<2s}{:<2s}\n'.format(printable_sense_result[0], printable_sense_result[1], printable_sense_result[2])
+        logging.info(str)
 
         sense_grid = [x[0] for x in sense_result]
 
@@ -233,6 +261,15 @@ class RonWeasley(Player):
         move_detected = False
         move_from_loc = None
         move_to_loc = None
+
+        changed_squares = []
+
+        # TODO: can detect multiple pieces moving with a sense
+        # example:
+        # sense 19 early in the game, detect both:
+        #   pawn moving from 9->10
+        #   queen moving from 3->9
+        # need to detect both of those moves and react accordingly
 
         # determine what changed before and after the sense
         for space, piece in sense_result:
@@ -247,9 +284,11 @@ class RonWeasley(Player):
                 move_from_loc = space
 
             new_board.set_piece_at(space, piece)
+            #changed_squares.append((space, piece))
 
         if has_board_changed:
             logging.info('Sense has detected a board change! {} -> {}'.format(move_from_loc, move_to_loc))
+            #logging.info('Sense has detected a board change! {}'.format(changed_squares)
 
             potential_moves = []
 
@@ -261,14 +300,13 @@ class RonWeasley(Player):
                         potential_moves.append(chess.Move(move.from_square, move_to_loc))
             elif move_to_loc is None:
                 for move in self.board.legal_moves:
-                    if move.from_square == move_from_loc:
+                    if move.from_square == move_from_loc and move.to_square not in sense_result:
                         potential_moves.append(chess.Move(move_from_loc, move.to_square))
 
             logging.info('Potential moves: {}\n'.format(potential_moves))
 
             if len(potential_moves) == 1:
                 move = potential_moves[0]
-                self.reset_freshness(sense_grid)
                 self.decrease_freshness(sense_grid)
 
                 potential_move = chess.Move(move.from_square, move.to_square)
@@ -289,12 +327,11 @@ class RonWeasley(Player):
                 else:
                     logging.info('More than one potential move detected!')
 
-                self.reset_freshness(sense_grid)
                 self.decrease_freshness(sense_grid)
 
                 # decrease the freshness extra for any potential starting location
                 for move in potential_moves:
-                    self.decrease_freshness(move.from_square)
+                    self.decrease_freshness_for_square(move.from_square)
 
                 # update the spaces in the sense result given the information we know
                 for space, piece in sense_result:
@@ -312,14 +349,13 @@ class RonWeasley(Player):
 
             logging.info('Updated board:\n{}\n'.format(self.board))
             
-            self.print_freshness_array()
-
-            logging.info('Updated board:\n{}\n'.format(self.board))
+            self.log_freshness_array()
 
         # no board changes
         else:
-            logging.info('No detected board changes')
-
+            logging.info('No detected board changes\n')
+            self.decrease_freshness(sense_grid)
+            
 
         #'''
         # trout bot
@@ -359,15 +395,40 @@ class RonWeasley(Player):
         :return: a move (chess.Move) to perform
         '''
 
-        # prevents crashes; choose_move() appears to get called both before and after handle_sense_result
+        # prevents crashes TODO may be fixed with removal of trout bot code
         if self.board.turn != self.color:
             return None
 
-        logging.info('Choosing move')
-        self.print_current_player()
+        #logging.info('Choosing move')
+        #self.print_current_player()
+
+        # determine which pieces can be captured 
+        attacks = []
+
+        for attacked_square in range(64):
+            piece = self.board.piece_at(attacked_square)
+
+            # only concerned with squares with enemy pieces
+            if piece is not None and piece.color is not self.color:
+
+                for attack in self.board.attackers(self.color, attacked_square):
+                    attacks.append((attack, attacked_square, self.capture_value[piece.piece_type]))
+
+        # sort attacks by the value of the captured piece
+        attacks = sorted(attacks, key=lambda x: x[2], reverse=True)
+
+        if len(attacks) > 0:
+            logging.info('Potential attacks:')
+            for attack in attacks:
+                logging.info('\t{} -> {} ({})'.format(attack[0], attack[1], attack[2]))
 
         # if we might be able to take the king, try to
         '''
+        if attacks[0][2] == self.capture_value[chess.KING]:
+            return chess.Move(attacks[0][0], attacks[0][1])
+        '''
+
+        #'''
         enemy_king_square = self.board.king(not self.color)
         if enemy_king_square:
             # if there are any ally pieces that can take king, execute one of those moves
@@ -375,7 +436,7 @@ class RonWeasley(Player):
             if enemy_king_attackers:
                 attacker_square = enemy_king_attackers.pop()
                 return chess.Move(attacker_square, enemy_king_square)
-        '''
+        #'''
 
         # otherwise, try to move with the stockfish chess engine
         try:
@@ -385,10 +446,14 @@ class RonWeasley(Player):
 
             logging.info('Chosen move: {} -> {}'.format(result.move.from_square, result.move.to_square))
 
+            # check if the proposed move
+
             return result.move
 
         except (chess.engine.EngineError, chess.engine.EngineTerminatedError) as e:
             logging.error('Engine bad state at "{}"'.format(self.board.fen()))
+
+        #logging.info('')
 
         # if all else fails, do a random move
         return random.choice(move_actions)
@@ -410,8 +475,10 @@ class RonWeasley(Player):
         :type capture_square: chess.Square
         '''
 
-        logging.info('Handling move result')
-        self.print_current_player()
+        #logging.info('Handling move result')
+        #self.print_current_player()
+
+        # TODO compare taken_move to requested_move
 
         # if a move was executed, apply it to our board
         if taken_move is not None:
@@ -421,18 +488,34 @@ class RonWeasley(Player):
 
             logging.info('Taken move: {} -> {}'.format(taken_move.from_square, taken_move.to_square))
 
+            if captured_opponent_piece:
+                piece_captured = self.board.piece_at(capture_square)
+
             self.board.push(taken_move)
+
+            if captured_opponent_piece:
+                logging.info('Captured {} with {} at {}!!'.format(piece_captured, self.board.piece_at(capture_square), capture_square))
 
             logging.info('Updated board:\n{}\n'.format(self.board))
 
             # reset the freshness of the squares along the piece's path
             self.reset_freshness_for_move(taken_move, self.board.piece_at(taken_move.to_square))
 
-            self.print_freshness_array()
+            self.log_freshness_array()
 
         else:
-            logging.error('Illegal move!')
+            logging.error('Illegal move! {} -> {}'.format(requested_move.from_square, requested_move.to_square))
+
+            requested_move_piece = self.board.piece_at(requested_move.from_square).piece_type
+
+            # pawn tried to capture diagonally but there was no piece there
+            if requested_move_piece == chess.PAWN:
+                self.freshness[self.board.piece_at(requested_move.to_square)] = 0
+                logging.info('Tried to move a pawn to {s}. Reset freshness at {s}'.format(s=requested_move.to_square()))
+
             self.board.push(chess.Move.null())
+
+        #logging.info('')
 
 
     def handle_game_end(self, winner_color: Optional[Color], win_reason: Optional[WinReason],
@@ -451,6 +534,8 @@ class RonWeasley(Player):
         :param sense_grid: the 3x3 sense grid just seen
         :type sense_grid: an array of chess.Square (max length 9)
         '''
+        #logging.info('Resetting freshness for sense grid: {}'.format(sense_grid))
+
         for square_idx in sense_grid:
             self.freshness[square_idx] = 1
 
@@ -468,7 +553,7 @@ class RonWeasley(Player):
 
         path = self.get_path(move, piece)
 
-        logging.info('Path: {}'.format(path))
+        #logging.info('Path: {}'.format(path))
 
         for square_idx in path:
             if square_idx > len(self.freshness):
@@ -496,14 +581,14 @@ class RonWeasley(Player):
         start = move.from_square
         end = move.to_square
         
-        logging.info('Determining path from {} to {} with piece {}'.format(start, end, piece))
+        #logging.info('Determining path from {} to {} with piece {}'.format(start, end, piece))
 
         same_column = chess.square_file(start) == chess.square_file(end)
         same_row = chess.square_rank(start) == chess.square_rank(end)
 
         # knights jump over pieces so their path is only the start and end
         if piece.piece_type == chess.KNIGHT:
-            logging.info('Knight')
+            #logging.info('Knight')
             path = [start, end]
 
         # for non knight pieces the path is every square in between start and end
@@ -511,17 +596,17 @@ class RonWeasley(Player):
 
             # moving vertically
             if same_column:
-                logging.info('Same column')
+                #logging.info('Same column')
                 step = 8
 
             # moving horizontally
             elif same_row:
-                logging.info('Same row')
+                #logging.info('Same row')
                 step = 1
 
             # moving diagonally
             else:
-                logging.info('Diagonal')
+                #logging.info('Diagonal')
                 step = 9
 
             # moving down to board
@@ -577,10 +662,7 @@ class RonWeasley(Player):
             if square_idx not in stale_points and self.freshness[square_idx] < 1:
                 stale_points.append(square_idx)
 
-        logging.info('Decreasing freshness for {}'.format(sorted(stale_points)))
-
-        # TODO
-        return stale_points
+        #logging.info('Decreasing freshness for {}'.format(sorted(stale_points)))
 
         '''
         # decrease the freshness for any potential endpoint
@@ -612,14 +694,21 @@ class RonWeasley(Player):
                 if self.freshness[square_idx] < 0:
                     self.freshness[square_idx] = 0
 
+        self.reset_freshness(sense_grid)
 
-    def print_freshness_array(self):
+        self.log_freshness_array()
+
+
+    def log_freshness_array(self):
         '''
         Prints the freshness board to the console:
         '''
+
+        str = 'Freshness array:\n'
+
         for row_num in reversed(range(8)):
             row = [self.freshness[x] for x in range(row_num * 8, (row_num + 1) * 8)]
-            logging.info('{:<3d} {:<3d} {:<3d} {:<3d} {:<3d} {:<3d} {:<3d} {:<3d}'.format(\
+            str += '{:<3d} {:<3d} {:<3d} {:<3d} {:<3d} {:<3d} {:<3d} {:<3d}\n'.format(\
                 int(row[0]*10), 
                 int(row[1]*10), 
                 int(row[2]*10), 
@@ -627,9 +716,9 @@ class RonWeasley(Player):
                 int(row[4]*10), 
                 int(row[5]*10), 
                 int(row[6]*10), 
-                int(row[7]*10))) 
+                int(row[7]*10)) 
 
-        #print()
+        #logging.info(str)
 
 
     def are_boards_matching(self, board1, board2):
@@ -659,6 +748,20 @@ class RonWeasley(Player):
         return chess.FILE_NAMES[chess.square_file(idx)] + chess.RANK_NAMES[chess.square_rank(idx)]
 
 
+    def store_sense_grids(self):
+        '''
+        Creates all sense grids and stores them in a map 
+        for faster access time
+        '''
+
+        self.sense_grids = []
+
+        # get the sense grid for each possible sense square on the board
+        for center_square in range(64):
+            self.sense_grids.append(self.get_sense_grid(center_square))
+            #logging.info('Sense grid for center {}: {}'.format(center_square, self.sense_grids[center_square]))
+
+
     def get_sense_grid(self, sense_square):
         '''
         Returns an array of spaces contained within the 3x3 space surrounding a sense location
@@ -669,12 +772,11 @@ class RonWeasley(Player):
         '''
         sense_zone = []
 
-        # TODO
-        return sense_zone
-
         # calculate column and row number on the chess board
         col_num = sense_square % 8
         row_num = int(sense_square / 8)
+
+        #logging.info('Forming sense grid for {} (col {}, row {})'.format(sense_square, col_num, row_num))
 
         if row_num > 0:
             # lower left corner
@@ -711,6 +813,8 @@ class RonWeasley(Player):
             if col_num < 7:
                 sense_zone.append(sense_square + 9)
 
+        #logging.info('Sense grid: {}'.format(sense_zone))
+
         return sense_zone
 
 
@@ -723,7 +827,7 @@ class RonWeasley(Player):
         :return: an integer score of the sense option (a higher integer is a better square to sense)
         '''
         sense_score = 0
-        sense_grid = self.get_sense_grid(sense_square)
+        sense_grid = self.sense_grids[sense_square]
         
         #start_time = time.time()
 
@@ -742,7 +846,12 @@ class RonWeasley(Player):
             # increase the score based on the percentage of contained moves
             num_endpoints_in_grid = self.get_num_endpoints_in_grid(sense_grid)
             num_potential_moves = self.board.legal_moves.count()
-            percent_contained = float(num_endpoints_in_grid) / float(num_potential_moves)
+
+            if num_potential_moves == 0:
+                percent_contained = 0
+            else:
+                percent_contained = float(num_endpoints_in_grid) / float(num_potential_moves)
+            
             sense_score = sense_score + percent_contained
 
         #end_time = time.time()
