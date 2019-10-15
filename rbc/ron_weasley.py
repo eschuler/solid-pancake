@@ -135,6 +135,9 @@ class RonWeasley(Player):
             logging.info('My piece was captured! {} at {}'.format(self.board.piece_at(capture_square), capture_square)) 
             self.board.remove_piece_at(capture_square)
             logging.info('Updated board:\n{}\n'.format(self.board))
+
+            # TODO check what pieces might have been the attacker
+            self.freshness[capture_square] = 0
         #'''
 
 
@@ -286,6 +289,14 @@ class RonWeasley(Player):
             new_board.set_piece_at(space, piece)
             #changed_squares.append((space, piece))
 
+        if has_board_changed and move_from_loc is not None and move_to_loc is not None:
+            from_piece = self.board.piece_at(move_from_loc)
+            to_piece = self.board.piece_at(move_to_loc)
+            
+            if from_piece is not None and to_piece is not None and from_piece.piece_type != to_piece.piece_type:
+                logging.info('Detected two moves in one sense! {} at {} is gone and {} at {} is new'.format(
+                    self.board.piece_at(move_from_loc), move_from_loc, self.board.piece_at(move_to_loc), move_to_loc))
+
         if has_board_changed:
             logging.info('Sense has detected a board change! {} -> {}'.format(move_from_loc, move_to_loc))
             #logging.info('Sense has detected a board change! {}'.format(changed_squares)
@@ -347,8 +358,6 @@ class RonWeasley(Player):
                 #self.board.push(chess.Move.null())
                 '''
 
-            logging.info('Updated board:\n{}\n'.format(self.board))
-            
             self.log_freshness_array()
 
         # no board changes
@@ -364,6 +373,9 @@ class RonWeasley(Player):
         for square, piece in sense_result:
             self.board.set_piece_at(square, piece)
 
+        if has_board_changed:
+            logging.info('Updated board:\n{}\n'.format(self.board))
+            
         self.board.push(chess.Move.null())
 
         return
