@@ -114,31 +114,44 @@ class RonWeasley(Player):
         '''
 
         #logging.info('Handling opponent move result')
-
-        '''
-        # trout bot
-
-        # if the opponent captured our piece, remove it from our board.
-        self.my_piece_captured_square = capture_square
-        if captured_my_piece:
-            self.board.remove_piece_at(capture_square)
-
-        '''
-
-
-        #'''
         #self.print_current_player()
 
         # if the opponent captured our piece, remove it from our board.
         self.my_piece_captured_square = capture_square
         if captured_my_piece:
-            logging.info('My piece was captured! {} at {}'.format(self.board.piece_at(capture_square), capture_square)) 
+            logging.info('My piece was captured! {} at {}'.format(self.board.piece_at(capture_square), capture_square))
+
+            # figure out where the piece could have come from
+            potential_moves = []
+            #logging.info('Potential attacks:')
+            for move in self.board.legal_moves:
+                #logging.info('\t{}->{}'.format(move.from_square, move.to_square))
+                if move.to_square == capture_square:
+                    potential_moves.append(move)
+
+            logging.info('Potential attacks: {}'.format(potential_moves))
+
+            # remove my piece from the board
             self.board.remove_piece_at(capture_square)
+
+            # no idea where the attack came from
+            if len(potential_moves) == 0:
+                self.freshness[capture_square] = 0
+
+            # move the piece we think attacked
+            elif len(potential_moves) == 1:
+                attack_move = potential_moves[0]
+                self.board.set_piece_at(capture_square, self.board.piece_at(attack_move.from_square))
+                self.board.remove_piece_at(attack_move.from_square)
+
+            # more than one potential attack; decrease freshness for the possible origins
+            else:
+                self.freshness[capture_square] = 0
+                for move in potential_moves:
+                    self.freshness[move.from_square] -= 0.5
+
             logging.info('Updated board:\n{}\n'.format(self.board))
 
-            # TODO check what pieces might have been the attacker
-            self.freshness[capture_square] = 0
-        #'''
 
 
     def choose_sense(self, sense_actions: List[Square], move_actions: List[chess.Move], seconds_left: float) -> \
@@ -252,6 +265,7 @@ class RonWeasley(Player):
             else:
                 printable_sense_result.append(x[1].symbol())
 
+        #str = 'Sense result: {}\n'.format(sense_result)
         str = 'Sense result:\n'
         str += '{:<2s}{:<2s}{:<2s}\n'.format(printable_sense_result[6], printable_sense_result[7], printable_sense_result[8])
         str += '{:<2s}{:<2s}{:<2s}\n'.format(printable_sense_result[3], printable_sense_result[4], printable_sense_result[5])
@@ -260,12 +274,11 @@ class RonWeasley(Player):
 
         sense_grid = [x[0] for x in sense_result]
 
-        has_board_changed = False
+        changed_squares = []
+        num_changed_squares = 0
         move_detected = False
         move_from_loc = None
         move_to_loc = None
-
-        changed_squares = []
 
         # TODO: can detect multiple pieces moving with a sense
         # example:
@@ -279,7 +292,8 @@ class RonWeasley(Player):
             current_piece = self.board.piece_at(space)
 
             if current_piece != piece:
-                has_board_changed = True
+                num_changed_squares += 1
+                changed_squares.append(space)
 
             if current_piece is None and piece is not None:
                 move_to_loc = space
@@ -289,6 +303,79 @@ class RonWeasley(Player):
             new_board.set_piece_at(space, piece)
             #changed_squares.append((space, piece))
 
+        has_board_changed = len(changed_squares) > 0
+
+        logging.info('Changed squares in sense grid: {}'.format(changed_squares))
+
+        potential_moves = []
+
+        # easy case: one piece either appeared in the sense grid
+        # or disappeared from the sense grid
+        if len(changed_squares) == 1:
+
+            # a piece disappeared from the sense grid
+            if self.board.piece_at(changed_squares[0]) is not None and new_board.piece_at(changed_squares[0]) is None:
+                move_from_loc = changed_squares[0]
+                move_to_loc = None
+
+                # figure out where the piece could have gone
+                for move in self.board.legal_moves:
+                    if move.from_square == move_from_loc and move.to_square not in sense_grid and self.board.piece_at(move.to_square) is None:
+                        potential_moves.append(move)
+
+            # a piece appeared in the sense grid
+            elif self.board.piece_at(changed_squares[0]) is None and new_board.piece_at(changed_squares[0]) is not None:
+                move_from_loc = None
+                move_to_loc = changed_squares[0]
+
+                # figure out where the piece could have come from
+                for move in self.board.legal_moves:
+                    if move.to_square == move_to_loc and new_board.piece_at(move_to_loc) == self.board.piece_at(move.from_square):
+                        potential_moves.append(move)
+
+            logging.info('Sense has detected a board change! {} -> {}'.format(move_from_loc, move_to_loc))
+
+        # moderate case: two squares changed
+        # it's easy to handle if one piece moved from one square to another
+        # more difficult if two pieces appeared or disappeared
+        elif len(changed_squares) == 2:
+
+            logging.info('Sense has detected a board change in 2 squares: {} and {}'.format(changed_squares[0], changed_squares[1]))
+
+            piece1 = self.board.piece_at(changed_squares[0])
+            piece2 = self.board.piece_at(changed_squares[1])
+
+            # difficult: 2 pieces moved out of the sense grid
+            if piece1 is None and piece2 is None:
+                logging.info('Sense has detected a board change! {} and {} are now empty!'.format(changed_squares[0], changed_squares[1]))
+
+            # difficult: 2 pieces moved into the sense grid
+            elif piece1 is not None and piece2 is not None:
+                logging.info('Sense has detected a board change! {} and {} are now occupied!'.format(changed_squares[0], changed_squares[1]))
+
+            #'''
+            # could be easy or difficult
+            else:
+
+                # easy: one piece moved from one square to another within the sense grid;
+                # flipped logic because piece1 and piece2 come from self.board which hasn't
+                # been updated with the sense result yet
+                if piece1 is None:
+                    move_from_loc = changed_squares[1]
+                    move_to_loc = changed_squares[0]
+                else:
+                    move_from_loc = changed_squares[0]
+                    move_to_loc = changed_squares[1]
+
+                logging.info('Sense has detected a board change! {} -> {}'.format(move_from_loc, move_to_loc))
+                potential_moves.append(chess.Move(move_from_loc, move_to_loc))
+            #'''
+
+
+        elif len(changed_squares) > 2:
+            logging.info('More than 2 squares changed in the sense grid. Not sure how to handle this!!')
+
+        '''
         if has_board_changed and move_from_loc is not None and move_to_loc is not None:
             from_piece = self.board.piece_at(move_from_loc)
             to_piece = self.board.piece_at(move_to_loc)
@@ -296,11 +383,14 @@ class RonWeasley(Player):
             if from_piece is not None and to_piece is not None and from_piece.piece_type != to_piece.piece_type:
                 logging.info('Detected two moves in one sense! {} at {} is gone and {} at {} is new'.format(
                     self.board.piece_at(move_from_loc), move_from_loc, self.board.piece_at(move_to_loc), move_to_loc))
+        '''
 
+        # old strategy
         if has_board_changed:
-            logging.info('Sense has detected a board change! {} -> {}'.format(move_from_loc, move_to_loc))
+            #logging.info('Sense has detected a board change! {} -> {}'.format(move_from_loc, move_to_loc))
             #logging.info('Sense has detected a board change! {}'.format(changed_squares)
 
+            '''
             potential_moves = []
 
             if move_from_loc is not None and move_to_loc is not None:
@@ -313,6 +403,7 @@ class RonWeasley(Player):
                 for move in self.board.legal_moves:
                     if move.from_square == move_from_loc and move.to_square not in sense_result:
                         potential_moves.append(chess.Move(move_from_loc, move.to_square))
+            '''
 
             logging.info('Potential moves: {}\n'.format(potential_moves))
 
@@ -522,8 +613,9 @@ class RonWeasley(Player):
 
             # pawn tried to capture diagonally but there was no piece there
             if requested_move_piece == chess.PAWN:
-                self.freshness[self.board.piece_at(requested_move.to_square)] = 0
-                logging.info('Tried to move a pawn to {s}. Reset freshness at {s}'.format(s=requested_move.to_square()))
+                self.freshness[requested_move.to_square] = 0
+                logging.info('Tried to move a pawn to {s}. Reset freshness at {s}'.format(s=requested_move.to_square))
+            # TODO other piece types
 
             self.board.push(chess.Move.null())
 
@@ -855,6 +947,7 @@ class RonWeasley(Player):
             else:
                 sense_score = sense_score + (1 - self.freshness[square_idx])
 
+            '''
             # increase the score based on the percentage of contained moves
             num_endpoints_in_grid = self.get_num_endpoints_in_grid(sense_grid)
             num_potential_moves = self.board.legal_moves.count()
@@ -865,6 +958,7 @@ class RonWeasley(Player):
                 percent_contained = float(num_endpoints_in_grid) / float(num_potential_moves)
             
             sense_score = sense_score + percent_contained
+            '''
 
         #end_time = time.time()
 
