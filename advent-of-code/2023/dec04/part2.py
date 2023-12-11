@@ -1,5 +1,8 @@
 
 import re
+import time
+
+start_time = time.time()
 
 #infile = "sample.txt"
 infile = "input.txt"
@@ -55,19 +58,24 @@ num_scratch_cards = 0
     
 while len(cards) > 0:
 
+    #print("Handling card {} - {} copies".format(cards[0].card_num, cards[0].num_copies))
+
     for i in range(cards[0].num_winning_numbers):
-        cards[i + 1].num_copies += 1
+        cards[i + 1].num_copies += cards[0].num_copies
 
-    num_scratch_cards += 1
-    cards[0].num_copies -= 1
+    num_scratch_cards += cards[0].num_copies
 
-    if cards[0].num_copies == 0:
-        cards.pop(0)
+    cards.pop(0)
 
     #print_cards()
 
     #break
         
 print("# scratch cards: {}".format(num_scratch_cards))
+end_time = time.time()
+
+print("Elapsed time: {} seconds".format(end_time - start_time))
+
+# final answer: 19499881
     
 
