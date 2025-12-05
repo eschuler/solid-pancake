@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 
 infile_path = "sample.txt"
 
