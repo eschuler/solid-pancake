@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+import re
+
 infile_path = "sample.txt"
 
 zero_count = 0
