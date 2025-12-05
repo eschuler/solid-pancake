@@ -23,4 +23,13 @@ with open(infile_path, "r") as infile:
         direction = groups[0]
         amount = int(groups[1])
         
-        print("{} -> {}".format(direction, amount))
+        if direction == "L":
+            amount *= -1
+            
+        curr_dial += amount
+        curr_dial %= 100
+        
+        if curr_dial == 0:
+            zero_count += 1
+            
+print("zero count: {}".format(zero_count))
