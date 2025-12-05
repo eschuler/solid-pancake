@@ -3,6 +3,7 @@
 import re
 
 infile_path = "sample.txt"
+infile_path = "input.txt"
 
 zero_count = 0
 curr_dial = 50
