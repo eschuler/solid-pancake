@@ -1,5 +1,10 @@
 #!/usr/bin/env python
 
+import random
+
+# seed = Washington Super Bowls
+random.seed(828791)
+
 MIN_TEAM_ID = 1
 MAX_TEAM_ID = 12
 
@@ -172,7 +177,66 @@ def create_league():
 
     return all_teams
 
-def generate_additional_matchups(all_teams):
+def remove_2025_matchups(all_matchups):
+    return_val = []
+
+    ############################################################################
+    # manually created extra matchups for the 2025 season
+    ############################################################################
+    matchups_2025 = [
+
+        # week 12
+        # Carrie vs. Eric
+        Matchup(all_teams[0], all_teams[6]),
+        # Karen vs. Emily
+        Matchup(all_teams[1], all_teams[3]),
+        # Matt vs. Brian
+        Matchup(all_teams[2], all_teams[8]),
+        # Ethan vs. Steve
+        Matchup(all_teams[4], all_teams[10]),
+        # Christopher vs. Alec
+        Matchup(all_teams[5], all_teams[7]),
+        # Ben vs. Dave
+        Matchup(all_teams[9], all_teams[11]),
+
+        # week 13
+        # Christopher vs. Eric
+        Matchup(all_teams[0], all_teams[5]),
+        # Emily vs. Ben
+        Matchup(all_teams[1], all_teams[11]),
+        # Steve vs. Brian
+        Matchup(all_teams[2], all_teams[4]),
+        # Matt vs. Karen
+        Matchup(all_teams[3], all_teams[8]),
+        # Ethan vs. Carrie
+        Matchup(all_teams[6], all_teams[10]),
+        # Dave vs. Alec
+        Matchup(all_teams[7], all_teams[9]),
+
+        # week 14
+        # Emily vs. Eric
+        Matchup(all_teams[0], all_teams[1]),
+        # Christopher vs. Brian
+        Matchup(all_teams[2], all_teams[5]),
+        # Alec vs. Karen
+        Matchup(all_teams[3], all_teams[7]),
+        # Steve vs. Carrie
+        Matchup(all_teams[4], all_teams[6]),
+        # Ben vs. Matt
+        Matchup(all_teams[8], all_teams[11]),
+        # Ethan vs. Dave
+        Matchup(all_teams[9], all_teams[10]),
+    ]
+
+    ############################################################################
+   
+    for m in all_matchups:
+        if m not in matchups_2025:
+            return_val.append(m)
+
+    return return_val
+
+def generate_all_matchups(all_teams):
 
     matchups = []
 
@@ -192,10 +256,22 @@ if __name__ == "__main__":
 
     print()
 
-    matchups = generate_additional_matchups(all_teams)
-    for m in matchups:
-        print(m)
-    print("# matchups: {}".format(len(matchups)))
+    all_matchups = generate_all_matchups(all_teams)
 
-    print()
+    # get all possible matchups over 4 years
+    print("All matchups 2025-2028:")
+    for m in all_matchups:
+        print(m)
+    print("# matchups: {}\n".format(len(all_matchups)))
+
+    all_matchups_2026_2028 = remove_2025_matchups(all_matchups)
+
+    # shuffle matchups
+    for i in range(100):
+        random.shuffle(all_matchups_2026_2028)
+
+    print("All matchups 2026-2028:")
+    for m in all_matchups_2026_2028:
+        print(m)
+    print("# matchups: {}\n".format(len(all_matchups_2026_2028)))
 
