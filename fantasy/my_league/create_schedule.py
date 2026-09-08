@@ -59,6 +59,8 @@ class Team:
         self.player_name = player_name
         self.inactive_players = []
 
+        self.matchups = {}
+
     def replace_active_player(self, new_player_name):
         """
         Replaces the active player name
@@ -129,6 +131,16 @@ class Matchup:
         else:
             self.team1 = team2
             self.team2 = team1
+
+    def has_team(self, team):
+        """
+        Returns True if this matchup contains the given team
+
+        :param team: team to check
+        :type team: Team object
+        :return: True if this matchup contains the given team
+        """
+        return self.team1 == team or self.team2 == team
 
     def __str__(self):
         """
@@ -251,18 +263,17 @@ if __name__ == "__main__":
 
     all_teams = create_league()
 
-    for t in all_teams:
-        print(t)
-
-    print()
+    #for t in all_teams:
+    #    print(t)
+    #print()
 
     all_matchups = generate_all_matchups(all_teams)
 
     # get all possible matchups over 4 years
-    print("All matchups 2025-2028:")
-    for m in all_matchups:
-        print(m)
-    print("# matchups: {}\n".format(len(all_matchups)))
+    #print("All matchups 2025-2028:")
+    #for m in all_matchups:
+    #    print(m)
+    #print("# matchups: {}\n".format(len(all_matchups)))
 
     all_matchups_2026_2028 = remove_2025_matchups(all_matchups)
 
@@ -273,5 +284,64 @@ if __name__ == "__main__":
     print("All matchups 2026-2028:")
     for m in all_matchups_2026_2028:
         print(m)
-    print("# matchups: {}\n".format(len(all_matchups_2026_2028)))
+    print("# matchups: {}".format(len(all_matchups_2026_2028)))
+
+    matchups = {}
+
+    # 2026
+    for week in range(12, 15):
+
+        print("\n2026 Week {} Matchups".format(week))
+
+        # initialize team matchups
+        for t in all_teams:
+            t.matchups[2026] = {}
+            t.matchups[2026][week] = None
+
+        matchups = []
+        idxs_to_remove = []
+        attempts = 1
+
+        while len(matchups) < 6:
+
+            # try to find 6 matchups
+            for j in range(len(all_matchups_2026_2028)):
+                curr_matchup = all_matchups_2026_2028[j]
+                team1 = curr_matchup.team1
+                team2 = curr_matchup.team2
+
+                if team1.matchups[2026][week] is None and team2.matchups[2026][week] is None:
+                    #print("found match? {}".format(curr_matchup))
+                    team1.matchups[2026][week] = team2
+                    team2.matchups[2026][week] = team1
+                    matchups.append(curr_matchup)
+                    idxs_to_remove.append(j)
+                else:
+                    #print("skipping {}".format(curr_matchup))
+                    pass
+
+            # couldn't find 6 matchups, rotate the matchup list
+            # by 1 to try again
+            if len(matchups) < 6:
+                #print("rotating list")
+                all_matchups_2026_2028.append(all_matchups_2026_2028.pop(0))
+                matchups = []
+                idxs_to_remove = []
+                for t in all_teams: t.matchups[2026][week] = None
+                attempts += 1
+
+        #print("  matchups after {} attempts".format(attempts))
+        for m in matchups:
+            print("  {}".format(m))
+        for remove_idx in reversed(idxs_to_remove):
+            all_matchups_2026_2028.pop(remove_idx)
+        #break
+
+    # 2027
+    #print("\nRemaining matchups:")
+    #for m in all_matchups_2026_2028:
+    #    print(m)
+
+    # 2028
+
 
